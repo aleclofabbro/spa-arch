@@ -1,4 +1,4 @@
-import { ClickMsg$, IncMsg$, Msg, Msgs$, emit } from './msg';
+import { AddCounterMsg$, CounterAddRndMsg$, emit, IncMsg$, Msg, Msgs$ } from './msg';
 import './index.css';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
@@ -7,19 +7,12 @@ import registerServiceWorker from './registerServiceWorker';
 import {
   BehaviorSubject as BSubj
 } from '@reactivex/rxjs';
+import uuid from './io/uuid';
 
 const props$ = new BSubj<Props>({
   username: 'nome',
-  countA: {
-    sum: 0,
-    lastAdded: 0,
-    click: () => emit(['Click', {ret: 'Inc', ctx: 'countA'}])
-  },
-  countB: {
-    sum: 0,
-    lastAdded: 0,
-    click: () => emit(['Click', {ret: 'Inc', ctx: 'countB'}])
-  },
+  counters: [],
+  addCounter: () => emit(['AddCounter', {}])
 });
 
 const updState$ = props$
@@ -28,25 +21,41 @@ const updState$ = props$
   .distinctUntilChanged();
 
 IncMsg$
-  .subscribe(({incBy, ctx}) => {
+  .subscribe(({incBy, id}) => {
     props$.next({
       ...props$.value,
-      [ctx]: {
-        ...props$.value[ctx],
-        lastAdded: incBy,
-        sum: props$.value[ctx].sum + incBy
-      }
+      counters: props$.value.counters.map(counter => {
+
+        return counter.id !== id ? counter : {
+          ...counter,
+          lastAdded: incBy,
+          sum: counter.sum + incBy
+        };
+      })
     });
   });
 
-ClickMsg$
-  .delay(500)
+CounterAddRndMsg$
+  .delay(100)
   .subscribe(payload => {
     const incBy = Math.floor(Math.random() * 10 + 1);
-    const retMsgType = payload.ret;
-    const ctx = payload.ctx;
-    const retMsg = [retMsgType, {incBy, ctx}];
+    const id = payload.id;
+    const retMsg = ['Inc', {incBy, id}];
     Msgs$.next((retMsg as Msg));
+  });
+
+AddCounterMsg$
+  .subscribe(({id}) => {
+    const _id: string = id || uuid();
+    props$.next({
+      ...props$.value,
+      counters: props$.value.counters.concat([{
+        lastAdded: 0,
+        sum: 0,
+        id: _id,
+        counterAddRnd: () => emit(['CounterAddRnd', {id: _id}])
+      }])
+    });
   });
 
 updState$

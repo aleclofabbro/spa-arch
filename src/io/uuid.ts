@@ -1,5 +1,5 @@
 // tslint:disable-next-line:typedef
-export default function b(a): string {
+export default function b(a?): string {
   return a
     // tslint:disable-next-line:no-bitwise
     ? (a ^ Math.random() * 16 >> a / 4).toString(16)
