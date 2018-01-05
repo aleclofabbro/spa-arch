@@ -1,11 +1,11 @@
 import * as React from 'react';
 import './App.css';
 
-export interface Props {
+export type Props = {
   username: string;
   nClicks: number;
   click: () => void;
-}
+};
 
 const logo = require('./logo.svg');
 

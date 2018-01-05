@@ -8,33 +8,47 @@ import {
   Subject as Subj,
   BehaviorSubject as BSubj
 } from '@reactivex/rxjs';
-
-const isClickMsg = msg => msg[0] === 'click';
-type ClickMsg = ['click'];
-
-// const isClockMsg = msg => msg[0] === 'clock';
-// type ClockMsg = ['clock', number];
-
-type Msg = ClickMsg; // | ClockMsg;
+type MsgTypes = ClickMsg | ClickIncMsg;
+type Msg = MsgTypes;
 const msgs$ = new Subj<Msg>();
 const emit = (msg: Msg) => msgs$.next(msg);
-// const x: Msg = ['clock'];
-// const s = x[0];
-
-msgs$
-.filter(isClickMsg)
-.subscribe(() => {
-  props$.next({
-    ...props$.value,
-    nClicks: props$.value.nClicks + 1
-  });
-});
 
 const props$ = new BSubj<Props>({
   username: 'nome',
   nClicks: 0,
-  click: () => emit(['click'])
+  click: () => emit(['click', 'clickInc'])
 });
+
+// TODO: mettere in 2 file esportare come funzioni generiche
+// tipizzate con T(MsgTypes),
+// argomenti props$, msgs$, e setters(basati su msg) dove si mod lo stato
+// esportare MsgTypes input (ClickMsg | ClickIncMsg)
+function isClickMsg(msg: MsgTypes): msg is ClickMsg {
+  return (msg as ClickMsg)[0] === 'click';
+}
+type ClickMsg = ['click', string];
+
+function isClickIncMsg(msg: MsgTypes): msg is ClickIncMsg {
+  return (msg as ClickIncMsg) === 'clickInc';
+}
+type ClickIncMsg = 'clickInc';
+
+msgs$
+  .filter(msg => isClickIncMsg(msg))
+  .subscribe((msg) => {
+    props$.next({
+      ...props$.value,
+      nClicks: props$.value.nClicks + 1
+    });
+  });
+
+msgs$
+  .filter(msg => isClickMsg(msg))
+  .delay(500)
+  .subscribe((msg) => {
+    msgs$.next((msg[1] as MsgTypes));
+  });
+// ODOT
 
 const updState$ = props$
   .auditTime(10)
@@ -47,13 +61,6 @@ updState$
       <App {...state}  />,
       document.getElementById('root') as HTMLElement
     )));
-
-registerServiceWorker();
-
 updState$.subscribe(console.log);
 
-// Obs.interval(1)
-//   .take(50)
-//   .map(n => `Ciccio ${n.toFixed(2)}`)
-//   .map(username => ({...props$.value, username: username.toUpperCase()}))
-//   .subscribe(x => props$.next(x));
+registerServiceWorker();
