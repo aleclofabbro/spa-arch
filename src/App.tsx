@@ -1,12 +1,12 @@
 import * as React from 'react';
 import './App.css';
 
-export type Props = {
+export interface Props {
   username: string;
   lastAdded: number;
   sum: number;
   click: () => void;
-};
+}
 
 const logo = require('./logo.svg');
 
