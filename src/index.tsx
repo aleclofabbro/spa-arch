@@ -10,9 +10,16 @@ import {
 
 const props$ = new BSubj<Props>({
   username: 'nome',
-  sum: 0,
-  lastAdded: 0,
-  click: () => emit(['Click', {ret: 'Inc'}])
+  countA: {
+    sum: 0,
+    lastAdded: 0,
+    click: () => emit(['Click', {ret: 'Inc', ctx: 'countA'}])
+  },
+  countB: {
+    sum: 0,
+    lastAdded: 0,
+    click: () => emit(['Click', {ret: 'Inc', ctx: 'countB'}])
+  },
 });
 
 const updState$ = props$
@@ -21,11 +28,14 @@ const updState$ = props$
   .distinctUntilChanged();
 
 IncMsg$
-  .subscribe(incBy => {
+  .subscribe(({incBy, ctx}) => {
     props$.next({
       ...props$.value,
-      lastAdded: incBy,
-      sum: props$.value.sum + incBy
+      [ctx]: {
+        ...props$.value[ctx],
+        lastAdded: incBy,
+        sum: props$.value[ctx].sum + incBy
+      }
     });
   });
 
@@ -34,7 +44,8 @@ ClickMsg$
   .subscribe(payload => {
     const incBy = Math.floor(Math.random() * 10 + 1);
     const retMsgType = payload.ret;
-    const retMsg = [retMsgType, incBy];
+    const ctx = payload.ctx;
+    const retMsg = [retMsgType, {incBy, ctx}];
     Msgs$.next((retMsg as Msg));
   });
 
