@@ -1,4 +1,4 @@
-import { AddCounterMsg$, LetCounterAddRndMsg$, emit, IncMsg$, Msg, Msgs$ } from './msg/';
+// import { AddCounterMsg$, LetCounterAddRndMsg$, emit, IncMsg$, Msg, Msgs$ } from './msg/';
 import './index.css';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
@@ -6,22 +6,27 @@ import { App, Props } from './App';
 import registerServiceWorker from './registerServiceWorker';
 import {
   Observable as Obs,
-  BehaviorSubject as BSubj
+  BehaviorSubject as BSubj,
+  Subject as Subj
 } from '@reactivex/rxjs';
 import uuid from './io/uuid';
 
 const props$ = new BSubj<Props>({
   username: 'nome',
   counters: [],
-  addCounter: () => emit(['AddCounter', {}])
+  addCounter: () => addCounter$.next()
 });
+
+export const addCounter$ = new Subj<void>();
+export const incCounter$ = new Subj<{incBy: number, id: string}>();
+export const reqRndIncCounter$ = new Subj<{id: string}>();
 
 const updState$ = props$
   .auditTime(10)
   .merge(props$.debounceTime(10))
   .distinctUntilChanged();
 
-IncMsg$
+incCounter$
   .subscribe(({incBy, id}) => {
     props$.next({
       ...props$.value,
@@ -36,12 +41,11 @@ IncMsg$
     });
   });
 
-LetCounterAddRndMsg$
-  .delay(100)
+reqRndIncCounter$
   .subscribe(payload => {
     const incBy = Math.floor(Math.random() * 10 + 1);
     const id = payload.id;
-    const retMsg = ['Inc', {incBy, id}];
+    const retMsg = {incBy, id};
     props$.next({
       ...props$.value,
       counters: props$.value.counters.map(counter => {
@@ -63,13 +67,13 @@ LetCounterAddRndMsg$
             };
           })
         });
-        Msgs$.next((retMsg as Msg));
+        incCounter$.next(retMsg);
       });
   });
 
-AddCounterMsg$
-  .subscribe(({id}) => {
-    const _id: string = id || uuid();
+addCounter$
+  .subscribe(() => {
+    const _id = uuid();
     props$.next({
       ...props$.value,
       counters: props$.value.counters.concat([{
@@ -77,7 +81,7 @@ AddCounterMsg$
         sum: 0,
         id: _id,
         pendingAddReq: false,
-        letCounterAddRnd: () => emit(['LetCounterAddRnd', {id: _id}])
+        letCounterAddRnd: () => reqRndIncCounter$.next({id: _id})
       }])
     });
   });
