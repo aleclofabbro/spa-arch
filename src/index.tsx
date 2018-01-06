@@ -1,10 +1,11 @@
-import { AddCounterMsg$, CounterAddRndMsg$, emit, IncMsg$, Msg, Msgs$ } from './msg';
+import { AddCounterMsg$, LetCounterAddRndMsg$, emit, IncMsg$, Msg, Msgs$ } from './msg/';
 import './index.css';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import { App, Props } from './App';
 import registerServiceWorker from './registerServiceWorker';
 import {
+  Observable as Obs,
   BehaviorSubject as BSubj
 } from '@reactivex/rxjs';
 import uuid from './io/uuid';
@@ -35,13 +36,35 @@ IncMsg$
     });
   });
 
-CounterAddRndMsg$
+LetCounterAddRndMsg$
   .delay(100)
   .subscribe(payload => {
     const incBy = Math.floor(Math.random() * 10 + 1);
     const id = payload.id;
     const retMsg = ['Inc', {incBy, id}];
-    Msgs$.next((retMsg as Msg));
+    props$.next({
+      ...props$.value,
+      counters: props$.value.counters.map(counter => {
+        return counter.id !== id ? counter : {
+          ...counter,
+          pendingAddReq: true
+        };
+      })
+    });
+    Obs.interval(500 * Math.random() + 300)
+      .take(1)
+      .subscribe(() => {
+        props$.next({
+          ...props$.value,
+          counters: props$.value.counters.map(counter => {
+            return counter.id !== id ? counter : {
+              ...counter,
+              pendingAddReq: false
+            };
+          })
+        });
+        Msgs$.next((retMsg as Msg));
+      });
   });
 
 AddCounterMsg$
@@ -53,7 +76,8 @@ AddCounterMsg$
         lastAdded: 0,
         sum: 0,
         id: _id,
-        counterAddRnd: () => emit(['CounterAddRnd', {id: _id}])
+        pendingAddReq: false,
+        letCounterAddRnd: () => emit(['LetCounterAddRnd', {id: _id}])
       }])
     });
   });
